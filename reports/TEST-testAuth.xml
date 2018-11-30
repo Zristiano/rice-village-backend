@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites>
+<testsuite name="test Auth" errors="0" tests="3" failures="0" time="0.213" timestamp="2018-11-12T03:19:33">
+  <testcase classname="test Auth" name="validate POST /login" time="0.052"></testcase>
+  <testcase classname="test Auth" name="should validate PUT /logout" time="0.055"></testcase>
+  <testcase classname="test Auth" name="validate POST /register" time="0.106"></testcase>
+</testsuite>
+</testsuites>
