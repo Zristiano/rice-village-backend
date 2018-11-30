@@ -8,8 +8,8 @@ const UserSchema = model.UserSchema;
 const ProfileSchema = model.ProfileSchema;
 const pepper = md5('Rice Village');
 const sessionMap = {};
-const RICE_VILLAGE_WEB = 'http://localhost:4200/#';
-// const RICE_VILLAGE_WEB = 'http://rice-village-yuanmengzeng.surge.sh/#';
+// const RICE_VILLAGE_WEB = 'http://localhost:4200/#';
+const RICE_VILLAGE_WEB = 'http://rice-village-yuanmengzeng.surge.sh/#';
 
 
 IDCounterSchema.findOne().exec((err,docs)=>{
@@ -90,8 +90,8 @@ function login(req,res){
         sessionMap[sessionId] ={userId: item.userId, expireTime: Date.now()+3600000};
         console.log(sessionMap);
         res.cookie('sid',sessionId,{maxAge:3600000,httpOnly:true});
-        res.cookie('userId',item.userId,{maxAge:5000});
-        res.cookie('userType','normal',{maxAge:5000});
+        res.cookie('userId',item.userId,{maxAge:500000,httpOnly:false});
+        res.cookie('userType','normal',{maxAge:500000,httpOnly:false});
         res.status(200).send({errorCode:0,message:'success',username: req.body.username,userId:item.userId});
     });
 }
@@ -183,11 +183,11 @@ function loginWithFacebook(req,res,next){
                     sessionMap[sessionId] ={userId: doc.userId, expireTime: Date.now()+3600000};
                     console.log(sessionMap);
                     res.cookie('sid',sessionId,{maxAge:3600000,httpOnly:true});
-                    res.cookie('userId',doc.userId,{maxAge:5000});
+                    res.cookie('userId',doc.userId,{maxAge:500000,httpOnly:false});
                     if(doc.salt && doc.saltedPassword){
-                        res.cookie('userType','normal',{maxAge:5000});
+                        res.cookie('userType','normal',{maxAge:500000,httpOnly:false});
                     }else{
-                        res.cookie('userType','facebook',{maxAge:5000});
+                        res.cookie('userType','facebook',{maxAge:500000,httpOnly:false});
                     }
                     res.redirect(302,RICE_VILLAGE_WEB+'/main');
                     res.end();
@@ -215,8 +215,8 @@ function loginWithFacebook(req,res,next){
                         console.log(sessionMap);
 
                         res.cookie('sid',sessionId,{maxAge:3600000,httpOnly:true});
-                        res.cookie('userId',userId,{maxAge:5000});
-                        res.cookie('userType','facebook',{maxAge:5000});
+                        res.cookie('userId',userId,{maxAge:500000,httpOnly:false});
+                        res.cookie('userType','facebook',{maxAge:500000,httpOnly:false});
                         res.redirect(302,RICE_VILLAGE_WEB+'/main');
                         res.end();
                     });
@@ -232,7 +232,8 @@ const FacebookStrategy = require('passport-facebook').Strategy;
 const FacebookJson = {
     clientID:"733045343728113",
     clientSecret:"b12e49d1cab6287e2b61da9aa147b650",
-    callbackURL:"http://localhost:5000/facebook_callback",
+    // callbackURL:"http://localhost:5000/facebook_callback",
+    callbackURL:"https://ricebookserver-yuanmengzeng.herokuapp.com/facebook_callback",
     profileFields:['emails','displayName','profileUrl','picture.type(large)']
 }
 passport.serializeUser((user,done)=>{
@@ -352,6 +353,19 @@ function unlinkFacebook(req,res){
     
 }
 
+function userState(req,res){
+    UserSchema.findOne({userId:req.userId},(err,doc)=>{
+        if(doc.salt && doc.saltedPassword){
+            res.status(200).send(new Response(0,'success',{userId:req.userId, userType:'normal'}));
+        }else if(doc.facebookId){
+            res.status(200).send(new Response(0,'success',{userId:req.userId, userType:'facebook'}));
+        }else{
+            res.status(200).send(new Response(2,'cannot find a state'));
+        }
+        res.end();
+    });
+}
+
 /**
  * logout, clear loggedin user's session
  * @param {request} req 
@@ -374,4 +388,4 @@ module.exports.loginWithFacebook = loginWithFacebook;
 module.exports.passport = passport;
 module.exports.linkAccount = linkAccount;
 module.exports.unlinkFacebook = unlinkFacebook;
-
+module.exports.userState = userState;

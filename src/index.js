@@ -97,6 +97,7 @@ app.get('/avatar/:userIds?', auth.isLoggedIn,profile.getAvatars);
 app.put('/password', auth.isLoggedIn,profile.putPassword);
 app.put('/linkaccount', auth.isLoggedIn,auth.linkAccount);
 app.put('/unlinkfacebook', auth.isLoggedIn,auth.unlinkFacebook);
+app.get('/userstate', auth.isLoggedIn,auth.userState);
 
 app.get('/login/facebook',auth.passport.initialize(),auth.passport.authenticate('facebook',{session:false,scope:['email']}));
 app.get('/facebook_callback',auth.passport.initialize(),auth.loginWithFacebook);    

@@ -79,7 +79,7 @@ function updateArticle(req,res){
                     if(articles){
                         res.status(200).send(new Response(0,'success',articles));
                     }else{
-                        res.status(200).send(new Response(1,'server error'));
+                        res.status(200).send(new Response(2,'server error'));
                     }
                 })
             });
@@ -96,7 +96,7 @@ function updateArticle(req,res){
                         if(articles){
                             res.status(200).send(new Response(0,'success',articles));
                         }else{
-                            res.status(200).send(new Response(1,'server error'));
+                            res.status(200).send(new Response(3,'server error'));
                         }
                     })
                 });
@@ -139,10 +139,15 @@ function getArticles(req,res){
     console.log("getArticles ==== ");
     console.log(req.params.ids);
     if(req.params.ids){
+        console.log("params.ids->"+req.params.ids);
         const idStrings = req.params.ids.split(",");
-        ids = [req.userId];
+        console.log("idStrings->"+idStrings);
+        ids = [];
         idStrings.forEach(idString=>{
-            ids.push(parseInt(idString));
+            const parsedId = parseInt(idString);
+            if(!isNaN(parsedId)){
+                ids.push(parseInt(idString));
+            }
         });
     }
     console.log("ids->"+ids);
@@ -156,9 +161,8 @@ function getArticles(req,res){
     }
 
     // no specific id or id is commentId
-    console.log("isNaN(ids)->"+isNaN(ids));
     if(!ids || ids[0]>=10000){
-        ids = [req.userId];
+        ids = [parseInt(req.userId)];
     }
 
     //article id
@@ -167,7 +171,7 @@ function getArticles(req,res){
             if(articles){
                 res.status(200).send(new Response(0,'success',articles));
             }else{
-                res.status(200).send(new Response(1,'server error'));
+                res.status(200).send(new Response(4,'server error'));
             }
         });
         return;
@@ -178,7 +182,7 @@ function getArticles(req,res){
         if(articles){
             res.status(200).send(new Response(0,'success',articles));
         }else{
-            res.status(200).send(new Response(1,'server error'));
+            res.status(200).send(new Response(5,'server error'));
         }
     });
 }
