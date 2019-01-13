@@ -229,7 +229,7 @@ function loginWithFacebook(req,res,next){
 
 const passport = require('passport');
 const FacebookStrategy = require('passport-facebook').Strategy;
-const FacebookJson = {
+const FacebookLoginJson = {
     clientID:"733045343728113",
     clientSecret:"b12e49d1cab6287e2b61da9aa147b650",
     // callbackURL:"http://localhost:5000/facebook_callback",
@@ -237,16 +237,21 @@ const FacebookJson = {
     profileFields:['emails','displayName','profileUrl','picture.type(large)']
 }
 passport.serializeUser((user,done)=>{
-    console.log("serializeUser=-=====");
-    console.log(user);
     done(null,user.id);
 })
-passport.use(new FacebookStrategy(FacebookJson,(accessToken,refreshToken,profile,done)=>{
-    console.log("accessToken->",accessToken);
-    console.log("refreshToken",refreshToken);
-    done(null,profile);
-}));
 
+const facebookLoginStrategy = new FacebookStrategy(FacebookLoginJson,(accessToken,refreshToken,profile,done)=>{
+    done(null,profile);
+});
+// passport.use(new FacebookStrategy(FacebookLoginJson,(accessToken,refreshToken,profile,done)=>{
+//     done(null,profile);
+// }));
+
+function facebookLogin(req,res,next){
+    console.log('facebooklogin-----use login strategy');
+    passport.use(facebookLoginStrategy);
+    next();
+}
 
 function linkAccount(req,res){
     const username = req.body.username;
@@ -284,6 +289,10 @@ function linkAccount(req,res){
  */
 function merge(normalUser, thirdPartyUserId, callback){
     UserSchema.findOne({userId:thirdPartyUserId},(err,thirdPartyUser)=>{
+        if(err){
+            console.log('err->>>',err);
+        }
+        console.log('thirdPartyUser---->>',thirdPartyUser);
         normalUser.facebookId = thirdPartyUser.facebookId;
         normalUser.save();
         UserSchema.findOneAndRemove({userId:thirdPartyUserId},(err)=>{
@@ -321,19 +330,12 @@ function merge(normalUser, thirdPartyUserId, callback){
             normalProfile.save();
 
             ProfileSchema.remove({userId:thirdPartyUserId},(err,res)=>{
-                console.log("remove ProfileSchema  ==== ");
-                console.log(err);
-                console.log('ProfileSchema =========');
             });
             
             model.ArticleSchema.updateMany({userId:thirdPartyUserId},{$set:{userId:normalUser.userId}},(err,raw)=>{
-                console.log('merge article=======');
-                console.log(raw);
             });
 
             model.CommentSchema.updateMany({userId:thirdPartyUserId},{$set:{userId:normalUser.userId}},(err,raw)=>{
-                console.log('merge comment=======');
-                console.log(raw);
             });
             callback(new Response(0,"success", normalProfile));
         });
@@ -366,6 +368,55 @@ function userState(req,res){
     });
 }
 
+const FacebookLinkJson = {
+    clientID:"733045343728113",
+    clientSecret:"b12e49d1cab6287e2b61da9aa147b650",
+    // callbackURL:"http://localhost:5000/linkfacebook_callback",
+    callbackURL:"https://ricebookserver-yuanmengzeng.herokuapp.com/linkfacebook_callback",
+    profileFields:['emails','displayName','profileUrl','picture.type(large)']
+}
+
+
+function linkFacebook(req,res,next){
+    passport.use(new FacebookStrategy(FacebookLinkJson,(accessToken,refreshToken,profile,done)=>{
+        console.log("linkFacebook user id -> "+req.userId);
+        UserSchema.findOne({userId:req.userId},(err,normalUser)=>{
+            if(!normalUser){
+                console.log("no normal user");
+                done(null,profile);
+            }
+            UserSchema.findOne({facebookId:profile.id},(err,fbUser)=>{
+                if(fbUser && fbUser.salt==='' && fbUser.saltedPassword===''){
+                    console.log('exist fbUser');
+                    merge(normalUser,fbUser.userId,(result)=>{
+                        console.log('merge done');
+                        done(null,profile);
+                    });
+                }else{
+                    console.log('no fbUser  ---> create');
+                    normalUser.facebookId = profile.id;
+                    normalUser.save();
+                    ProfileSchema.findOneAndUpdate({userId:req.userId},{$set:{facebookId:profile.id}},(err,doc)=>{
+                        console.log(doc);
+                        doc.facebookId=profile.id;
+                    });
+                    
+                    if(fbUser && fbUser.salt!=''&&fbUser.saltedPassword!=''){
+                        fbUser.facebookId='';
+                        fbUser.save();
+                        ProfileSchema.findOneAndUpdate({userId:fbUser.userId},{$set:{facebookId:''}},(err,fbProfile)=>{
+                            fbProfile.facebookId = '';
+                        });
+                    }
+                    done(null,profile);
+                }
+            });
+        })
+        // done(null,profile);
+    }));
+    next();
+}
+
 /**
  * logout, clear loggedin user's session
  * @param {request} req 
@@ -373,9 +424,7 @@ function userState(req,res){
  */
 function logout(req,res){
     let sid = getSidFromCookie(req.headers.cookie);
-    console.log("before sessionMap->"+JSON.stringify(sessionMap));
     delete sessionMap[sid];
-    console.log("after sessionMap->"+JSON.stringify(sessionMap));
     res.status(200).send({errorCode:0, message:'success'});
 }
 
@@ -389,3 +438,6 @@ module.exports.passport = passport;
 module.exports.linkAccount = linkAccount;
 module.exports.unlinkFacebook = unlinkFacebook;
 module.exports.userState = userState;
+module.exports.linkFacebook = linkFacebook;
+module.exports.facebookLogin = facebookLogin;
+module.exports.linkRedirect = { successRedirect: RICE_VILLAGE_WEB+'/profile', failureRedirect: RICE_VILLAGE_WEB+'/profile' };
